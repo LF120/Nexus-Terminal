@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS-TERMINAL</title>
+    <link rel="stylesheet" href="style.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Rajdhani:wght@500;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+
+    <div class="scanlines"></div>
+    <div id="toast-container"></div>
+
+    <div id="banned-overlay" class="hidden">
+        <div class="error-box">
+            <h1 class="blink-red">ACCESS VIOLATION</h1>
+            <p id="ban-duration-text">ACCOUNT LOCKED</p>
+            <div class="error-reason">GRUND: <span id="ban-reason-text">MISSING</span></div>
+            <button onclick="location.reload()" class="cyber-btn"
+                style="margin-top:20px; border-color: red; color: red;">TERMINATE SESSION</button>
+        </div>
+    </div>
+
+    <div id="loader" class="hidden">
+        <div class="spinner">
+            <div class="inner"></div>
+        </div>
+        <div class="loader-text">ESTABLISHING UPLINK...</div>
+        <div class="loader-subtext" id="loader-sub">Decrypting packets...</div>
+    </div>
+
+    <section id="login-view" class="center-screen">
+        <div class="glass-panel login-box">
+            <h1 class="glitch" data-text="NEXUS_OS">NEXUS_OS</h1>
+            <p class="subtitle">SECURE GATEWAY v5.5 // TOKEN AUTHENTICATION</p>
+
+            <div class="auth-tabs">
+                <span class="auth-tab active" onclick="toggleAuth('login')">LOGIN</span>
+                <span class="auth-tab" onclick="toggleAuth('register')">REGISTER</span>
+            </div>
+
+            <form id="login-form">
+                <p
+                    style="color:var(--neon-blue); font-size:0.8rem; margin-bottom:15px; text-align: left; font-family: var(--font-mono);">
+                    // SYSTEMANFORDERUNG: Gib deinen generierten Access-Token ein.
+                </p>
+                <div class="input-group">
+                    <input type="text" id="access-token" minlength="4" maxlength="12" required autocomplete="off"
+                        style="text-align: center; letter-spacing: 3px; color: var(--neon-blue);">
+                    <label style="width: 100%; text-align: center;">ACCESS TOKEN</label>
+                    <span class="bar"></span>
+                </div>
+                <button type="submit" class="cyber-btn"><span>INITIALIZE SESSION</span></button>
+            </form>
+
+            <form id="register-form" class="hidden">
+                <p style="color:var(--neon-pink); font-size:0.8rem; margin-bottom:15px; text-align: left;">
+                    WARNUNG: Nach der Registrierung wird dein persönlicher Access-Token generiert und in der F12-Konsole
+                    hinterlegt.
+                </p>
+                <div class="input-group">
+                    <input type="text" id="reg-username" minlength="4" maxlength="16" required autocomplete="off">
+                    <label>IDENTITY (4-16 Chars)</label>
+                    <span class="bar"></span>
+                </div>
+                <div class="input-group">
+                    <input type="password" id="reg-password" minlength="4" maxlength="16" required>
+                    <label>BACKUP PASSPHRASE</label>
+                    <span class="bar"></span>
+                </div>
+                <button type="submit" class="cyber-btn"
+                    style="border-color:var(--neon-pink); color:var(--neon-pink);"><span>GENERATE UPLINK</span></button>
+            </form>
+        </div>
+    </section>
+
+    <section id="dashboard-view" class="hidden">
+        <nav class="sidebar glass-panel">
+            <div class="brand glitch" data-text="NEXUS">NEXUS</div>
+            <ul class="nav-links">
+                <li onclick="switchTab('dash')" class="active" id="btn-dash">DASHBOARD</li>
+                <li onclick="switchTab('network')" id="btn-net">NETWORK_MAP</li>
+                <li onclick="switchTab('terminal')" id="btn-term">TERMINAL_V3</li>
+                <li onclick="logout()" style="margin-top: auto; color: var(--neon-pink)">[ DISCONNECT ]</li>
+            </ul>
+            <div class="user-profile">
+                <div id="display-user">GUEST</div>
+                <div id="display-role" class="role-badge">USER</div>
+            </div>
+        </nav>
+
+        <main class="content">
+            <div id="tab-dash">
+                <header class="glass-panel header-bar">
+                    <h2>SYSTEM STATUS: <span style="color:var(--neon-green)" class="blink">ONLINE & SECURE</span></h2>
+                    <div class="time-code" id="clock">00:00:00</div>
+                </header>
+                <div class="grid-stats">
+                    <div class="card glass-panel">
+                        <h3>ACTIVE IDENTITIES</h3>
+                        <div class="big-number neon-blue" id="stat-users">0</div>
+                    </div>
+                    <div class="card glass-panel">
+                        <h3>QUARANTINED</h3>
+                        <div class="big-number neon-pink" id="stat-banned">0</div>
+                    </div>
+                </div>
+                <div id="admin-panel" class="glass-panel table-box hidden">
+                    <h3>// CORE DATABASE [CLASSIFIED]</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>IDENTITY</th>
+                                <th>CLEARANCE</th>
+                                <th>ACCESS TOKEN</th>
+                                <th>STATUS</th>
+                                <th>EXPIRES</th>
+                            </tr>
+                        </thead>
+                        <tbody id="user-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="tab-network" class="hidden">
+                <header class="glass-panel header-bar">
+                    <h2 class="neon-blue">GLOBAL NETWORK GRID</h2>
+                </header>
+                <div class="glass-panel"
+                    style="height: 60vh; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; flex-direction: column;">
+                    <div class="radar"></div>
+                    <p class="neon-blue" style="margin-top: 20px; font-family: var(--font-mono); z-index: 2;">SCANNING
+                        FOR ROGUE NODES...</p>
+                </div>
+            </div>
+
+            <div id="tab-terminal" class="hidden" style="height: 100%;">
+                <div id="term-lock" class="glass-panel center-flex hidden"
+                    style="height: 100%; flex-direction: column;">
+                    <h2 class="neon-pink glitch" data-text="RESTRICTED AREA">RESTRICTED AREA</h2>
+                    <p style="margin-bottom: 20px; color: #888;">ENTER KERNEL OVERRIDE KEY</p>
+                    <input type="password" id="term-password" class="term-input" placeholder="OVERRIDE_KEY...">
+                    <button onclick="unlockTerminal()" class="cyber-btn"
+                        style="width: 200px; margin-top: 20px;">AUTHORIZE</button>
+                </div>
+
+                <div id="term-interface" class="glass-panel term-window hidden">
+                    <div class="term-header">ROOT@NEXUS_MAINFRAME:~# <span id="term-status"
+                            class="neon-green pull-right">SECURE</span></div>
+                    <div id="term-output" class="term-body">
+                        <div class="neon-blue">NEXUS KERNEL v5.5 INITIALIZED...</div>
+                        <div>Encrypted node communication active.</div>
+                        <div>Type 'help' for available commands.</div>
+                        <br>
+                    </div>
+                    <div class="term-input-line">
+                        <span id="term-prompt">root@nexus:~$</span>
+                        <input type="text" id="cmd-input" autocomplete="off" autofocus>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </section>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
