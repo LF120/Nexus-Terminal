@@ -1,6 +1,6 @@
 const DB_KEY = 'nexus_users';
 const SESSION_KEY = 'nexus_session';
-const TERMINAL_PASS = 'Leonie-2009'; // Override Key für Terminal (User-Rolle)
+const TERMINAL_PASS = '56964'; // Override Key für Terminal (User-Rolle)
 
 // Terminal History Speicher
 let cmdHistory = [];
@@ -19,8 +19,6 @@ function initDB() {
         localStorage.setItem(DB_KEY, JSON.stringify([
             // Standard-Accounts haben vordefinierte Token für den Erst-Login bekommen!
             { user: 'admin', pass: '1234', token: 'NEX-ADM1', role: 'admin', isBanned: false, banData: null },
-            { user: 'guest', pass: '1234', token: 'NEX-GST2', role: 'user', isBanned: false, banData: null },
-            { user: 'Lennox', pass: 'Leonie-2009', token: 'LNF_2', role: 'admin', isBanned: false, banData: null }
         ]));
     }
 }
