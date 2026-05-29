@@ -5,10 +5,10 @@ const TERMINAL_PASS = '56964'; // Globaler Override Bypass-Key für User-Rolle
 let cmdHistory = [];
 let historyIndex = -1;
 
-// Virtuelles Dateisystem für V6.0 Explorer
+// Virtuelles Dateisystem für V6.1 Explorer
 const VIRTUAL_FILES = [
     { name: 'kernel_status.cfg', content: 'SYSTEM_STATE=OPERATIONAL\nFIREWALL=ACTIVE\nINTEGRITY=100%' },
-    { name: 'manifesto.txt', content: 'NEXUS OPERATING SYSTEM v6.0\nBuilt combining Unix mechanics with fluid aesthetics.' },
+    { name: 'manifesto.txt', content: 'NEXUS OPERATING SYSTEM v6.1\nBuilt combining Unix mechanics with fluid aesthetics.' },
     { name: 'network_nodes.log', content: 'Node 127.0.0.1: SECURE\nNode 192.168.23.102: BREACH_TARGET' },
     { name: 'restricted_intel.db', content: 'ADMINISTRATOR KEY CLEARANCE REQUIRED.\nBypasses are prohibited.' }
 ];
@@ -18,6 +18,36 @@ document.addEventListener('DOMContentLoaded', () => {
     checkSession();
     startClock();
     buildFilesGrid();
+
+    // TERMINAL EVENT LISTENER FIX
+    const cmdInput = document.getElementById('cmd-input');
+    if (cmdInput) {
+        cmdInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                const input = this.value.trim();
+                if (input) {
+                    printTerm(document.getElementById('term-prompt').innerText + ' ' + input, "neon-blue");
+                    processCommand(input);
+                    cmdHistory.push(input);
+                    historyIndex = cmdHistory.length;
+                    this.value = '';
+                }
+            } else if (e.key === 'ArrowUp') {
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    this.value = cmdHistory[historyIndex];
+                }
+            } else if (e.key === 'ArrowDown') {
+                if (historyIndex < cmdHistory.length - 1) {
+                    historyIndex++;
+                    this.value = cmdHistory[historyIndex];
+                } else {
+                    historyIndex = cmdHistory.length;
+                    this.value = '';
+                }
+            }
+        });
+    }
 });
 
 function initDB() {
@@ -176,12 +206,20 @@ function renderApp(session) {
     document.getElementById('display-user').innerText = session.user.toUpperCase();
     document.getElementById('display-role').innerText = session.role.toUpperCase();
 
+    // Profil-Tab mit Daten füllen
+    document.getElementById('profile-name').innerText = session.user.toUpperCase();
+    document.getElementById('profile-role').innerText = session.role.toUpperCase();
+    document.getElementById('profile-token').innerText = session.token;
+
     const users = getUsers();
     updateStats(users);
 
+    // Admin-Rechte Logik für das Dock und Panel
     if (session.role === 'admin') {
-        document.getElementById('admin-panel').classList.remove('hidden');
+        document.getElementById('dock-admin').classList.remove('hidden');
         renderTable(users);
+    } else {
+        document.getElementById('dock-admin').classList.add('hidden');
     }
 }
 
@@ -192,7 +230,16 @@ function switchTab(tab, title) {
     document.getElementById(`tab-${tab}`).classList.remove('hidden');
     document.getElementById(`current-window-title`).innerText = title.toUpperCase();
 
-    const targetDock = { 'dash': 'dock-dash', 'network': 'dock-net', 'files': 'dock-files', 'terminal': 'dock-term', 'settings': 'dock-sett' }[tab];
+    const targetDock = {
+        'dash': 'dock-dash',
+        'network': 'dock-net',
+        'files': 'dock-files',
+        'terminal': 'dock-term',
+        'settings': 'dock-sett',
+        'profile': 'dock-profile',
+        'admin': 'dock-admin'
+    }[tab];
+
     if (targetDock) document.getElementById(targetDock).classList.add('active');
 
     if (tab === 'terminal') checkTerminalAccess();
@@ -228,7 +275,6 @@ function unlockTerminal() {
     }
 }
 
-// GUI-Toggles für das neue Settings-Tab
 function toggleSetting(type) {
     if (type === 'blur') {
         const checked = document.getElementById('setting-blur').checked;
@@ -245,11 +291,9 @@ function purgeSystem() {
     }
 }
 
-// --- AKTUALISIERTE FILE GRID FUNKTION ---
 function buildFilesGrid() {
     const grid = document.getElementById('file-system-grid');
 
-    // Neuer "Create File" Button als erstes Element
     grid.innerHTML = `
         <div class="file-icon add-file-btn" onclick="openFileModal()">
             <div class="icon-doc neon-blue" style="font-size: 2.2rem; line-height: 1.1;">+</div>
@@ -257,10 +301,9 @@ function buildFilesGrid() {
         </div>
     `;
 
-    // Bestehende Dateien laden
     VIRTUAL_FILES.forEach((f, idx) => {
         grid.innerHTML += `
-            <div class="file-icon" onclick="openVirtualFile(${idx})">
+            <div class="file-icon" onclick="viewVirtualFile(${idx})">
                 <div class="icon-doc">📄</div>
                 <div class="file-name">${f.name}</div>
             </div>
@@ -268,7 +311,6 @@ function buildFilesGrid() {
     });
 }
 
-// --- NEUE FILE CREATION FUNKTIONEN ---
 function openFileModal() {
     document.getElementById('new-file-name').value = '';
     document.getElementById('new-file-content').value = '';
@@ -280,6 +322,18 @@ function closeFileModal() {
     document.getElementById('file-create-overlay').classList.add('hidden');
 }
 
+// iOS File Viewer Modal Logik
+function viewVirtualFile(index) {
+    const file = VIRTUAL_FILES[index];
+    document.getElementById('viewer-file-name').innerText = "// " + file.name.toUpperCase();
+    document.getElementById('viewer-file-content').innerText = file.content;
+    document.getElementById('file-viewer-overlay').classList.remove('hidden');
+}
+
+function closeFileViewer() {
+    document.getElementById('file-viewer-overlay').classList.add('hidden');
+}
+
 function saveNewFile() {
     let name = document.getElementById('new-file-name').value.trim();
     const content = document.getElementById('new-file-content').value.trim();
@@ -289,19 +343,14 @@ function saveNewFile() {
         return;
     }
 
-    // Automatisch .txt anhängen, falls nicht vorhanden
     if (!name.toLowerCase().endsWith('.txt')) {
         name += '.txt';
     }
 
-    // Zur Array hinzufügen (temporär für diese Session)
     VIRTUAL_FILES.push({ name: name, content: content });
-
-    // Grid neu laden und Modal schließen
     buildFilesGrid();
     closeFileModal();
 
-    // Feedback im UI und Terminal
     showToast(`Document [${name}] compiled successfully.`, "success");
     if (document.getElementById('tab-terminal') && !document.getElementById('tab-terminal').classList.contains('hidden')) {
         printTerm(`New file injected: ${name}`, "term-success");
@@ -309,6 +358,7 @@ function saveNewFile() {
 }
 
 function printTerm(text, cssClass = '') {
+    const termOutput = document.getElementById('term-output');
     const line = document.createElement('div');
     line.className = `term-line ${cssClass}`;
     line.innerHTML = text;
@@ -327,6 +377,9 @@ function processCommand(input) {
             printTerm("--- STANDARD COMMANDS ---", "neon-blue");
             printTerm("sysinfo       : Display modern micro-kernel statistics");
             printTerm("whoami        : Verify active token clearance");
+            printTerm("userinfo <id> : Extract intel on specific node");
+            printTerm("time          : Display system chronos");
+            printTerm("echo <text>   : Reflect data stream");
             printTerm("files         : Catalog all structural documents in sandbox");
             printTerm("read <file>   : Read virtual file directly in shell");
             printTerm("motd          : Extract daily communication message");
@@ -334,7 +387,7 @@ function processCommand(input) {
             if (session.role === 'admin') {
                 printTerm("--- HIGH CLEARANCE ADMINISTRATIVE MATRIX ---", "neon-pink");
                 printTerm("list          : Display complete structure allocations");
-                printTerm("delete <user> <reason> <override_key> : Wipes account entirely [V6.0]");
+                printTerm("delete <user> <reason> <override_key> : Wipes account entirely");
                 printTerm("create <user> <pass>                  : Allocate fresh node");
                 printTerm("setrole <user> <admin|user>           : Mutate node clearance");
                 printTerm("ban <user> <time|perm> <reason>       : Restrict channel route");
@@ -343,7 +396,7 @@ function processCommand(input) {
             break;
 
         case 'clear':
-            termOutput.innerHTML = '';
+            document.getElementById('term-output').innerHTML = '';
             break;
 
         case 'whoami':
@@ -352,15 +405,43 @@ function processCommand(input) {
             printTerm(`Routing Token: ${session.token}`);
             break;
 
+        case 'userinfo':
+            if (parts.length < 2) { printTerm("Usage: userinfo <username>", "term-error"); return; }
+            let target = users.find(u => u.user.toLowerCase() === parts[1].toLowerCase());
+
+            if (target) {
+                printTerm(`--- NODE INTEL: ${target.user.toUpperCase()} ---`, "neon-blue");
+                printTerm(`Clearance Level : ${target.role.toUpperCase()}`);
+                printTerm(`Network Status  : ${target.isBanned ? 'CONTAINED (RESTRICTED)' : 'LIVE & SECURE'}`);
+
+                if (session.role === 'admin' || session.user.toLowerCase() === target.user.toLowerCase()) {
+                    printTerm(`Routing Token   : ${target.token}`);
+                } else {
+                    printTerm(`Routing Token   : [ENCRYPTED - ADMIN CLEARANCE REQUIRED]`, "term-error");
+                }
+            } else {
+                printTerm("Error: Entity absent from matrix.", "term-error");
+            }
+            break;
+
+        case 'time':
+            printTerm(`[SYS_CHRONOS]: ${new Date().toLocaleString()}`, "neon-blue");
+            break;
+
+        case 'echo':
+            if (parts.length < 2) { printTerm("Usage: echo <text stream>", "term-error"); return; }
+            printTerm(parts.slice(1).join(" "));
+            break;
+
         case 'sysinfo':
-            printTerm("NEXUS HYBRID CORE ENGINE v6.0 [Darwin/NT Fluid Blend]");
+            printTerm("NEXUS HYBRID CORE ENGINE v6.1 [Darwin/NT Fluid Blend]");
             printTerm("KERNEL: Microarchitecture-X86_64-V6");
             printTerm("DEVICES CONCURRENT: " + users.length);
             printTerm("UI COMPILER: Frosted Glassmorphism Engine (macOS Visual Protocol)", "term-success");
             break;
 
         case 'motd':
-            printTerm("[MOTD]: System updated to 6.0. Flat layout depreciated. Glass interfaces integrated. Security amplified.", "neon-blue");
+            printTerm("[MOTD]: System updated to 6.1. Flat layout depreciated. Glass interfaces integrated. Security amplified.", "neon-blue");
             break;
 
         case 'files':
@@ -379,7 +460,6 @@ function processCommand(input) {
             }
             break;
 
-        // V6.0 ADMIN DELETE BEFEHL MIT OVERRIDE KEY
         case 'delete':
             if (session.role !== 'admin') { printTerm("AUTHORIZATION COLLAPSED: LEVEL 5 CLEARANCE DEFICIENT", "term-error"); return; }
             if (parts.length < 4) { printTerm("Syntax error. Format: delete {user} {Reason} {Override_Key}", "term-error"); return; }
@@ -540,11 +620,10 @@ function showToast(text, type = 'success') {
     }, 3500);
 }
 
-// --- V6.0 DYNAMIC CYBER CURSOR ENGINE (BUGFIX) ---
+// --- V6.0 DYNAMIC CYBER CURSOR (MIT BUGFIX) ---
 const cursorDot = document.getElementById('cyber-cursor-dot');
 const cursorRing = document.getElementById('cyber-cursor-ring');
 
-// Nur starten, wenn die Elemente im HTML auch wirklich da sind!
 if (cursorDot && cursorRing) {
     let mouseX = 0, mouseY = 0;
     let ringX = 0, ringY = 0;
@@ -552,20 +631,25 @@ if (cursorDot && cursorRing) {
     document.addEventListener('mousemove', (e) => {
         mouseX = e.clientX;
         mouseY = e.clientY;
-        cursorDot.style.transform = `translate(${mouseX}px, ${mouseY}px) translate(-50%, -50%)`;
+        // BUGFIX: left/top statt transform nutzen
+        cursorDot.style.left = mouseX + 'px';
+        cursorDot.style.top = mouseY + 'px';
     });
 
     function animateRing() {
         ringX += (mouseX - ringX) * 0.15;
         ringY += (mouseY - ringY) * 0.15;
 
-        cursorRing.style.transform = `translate(${ringX}px, ${ringY}px) translate(-50%, -50%)`;
+        // BUGFIX: left/top statt transform nutzen
+        cursorRing.style.left = ringX + 'px';
+        cursorRing.style.top = ringY + 'px';
+
         requestAnimationFrame(animateRing);
     }
     animateRing();
 
     document.addEventListener('mouseover', (e) => {
-        const interactive = e.target.closest('button, input, textarea, .dock-item, .file-icon, .mac-dots .dot, .auth-tab, li');
+        const interactive = e.target.closest('button, input, textarea, .dock-item, .file-icon, .mac-dots .dot, .auth-tab, li, span.close-btn');
         if (interactive) {
             cursorDot.classList.add('hover');
             cursorRing.classList.add('hover');
@@ -573,7 +657,7 @@ if (cursorDot && cursorRing) {
     });
 
     document.addEventListener('mouseout', (e) => {
-        const interactive = e.target.closest('button, input, textarea, .dock-item, .file-icon, .mac-dots .dot, .auth-tab, li');
+        const interactive = e.target.closest('button, input, textarea, .dock-item, .file-icon, .mac-dots .dot, .auth-tab, li, span.close-btn');
         if (interactive) {
             cursorDot.classList.remove('hover');
             cursorRing.classList.remove('hover');
